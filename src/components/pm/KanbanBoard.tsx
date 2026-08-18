@@ -246,10 +246,21 @@ function KanbanCard({
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}
+          {...provided.dragHandleProps}
+          onClick={() => onEdit(story)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onEdit(story);
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label={`Open ${story.title}`}
           className={`group relative mb-2 rounded-lg border transition-all duration-200 ${
             snapshot.isDragging
               ? 'border-[#00d4ff]/40 shadow-lg shadow-[#00d4ff]/10'
-              : 'border-white/5 hover:border-white/15 hover:shadow-md hover:shadow-black/30'
+              : 'cursor-grab border-white/5 hover:border-white/15 hover:shadow-md hover:shadow-black/30'
           }`}
           style={{
             ...provided.draggableProps.style,
@@ -266,7 +277,6 @@ function KanbanCard({
             {/* Top row: grip + type icon + title */}
             <div className="mb-2 flex items-start gap-2">
               <span
-                {...provided.dragHandleProps}
                 className="mt-0.5 flex-shrink-0 cursor-grab text-gray-600 opacity-0 transition group-hover:opacity-100"
               >
                 <GripVertical size={14} />
@@ -301,14 +311,20 @@ function KanbanCard({
               <div className="flex items-center gap-2">
                 {/* Edit / Delete — visible on hover */}
                 <button
-                  onClick={() => onEdit(story)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(story);
+                  }}
                   className="rounded p-0.5 text-gray-600 opacity-0 transition hover:text-[#00d4ff] group-hover:opacity-100"
                   title="Edit"
                 >
                   <Edit3 size={12} />
                 </button>
                 <button
-                  onClick={() => onDelete(story.id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onDelete(story.id);
+                  }}
                   className="rounded p-0.5 text-gray-600 opacity-0 transition hover:text-red-400 group-hover:opacity-100"
                   title="Delete"
                 >
@@ -814,7 +830,11 @@ export default function KanbanBoard() {
       if (!sameColumn) {
         dispatch({
           type: 'MOVE_STORY',
-          payload: { storyId: draggableId, newStatus: destination.droppableId as StoryStatus },
+          payload: {
+            storyId: draggableId,
+            newStatus: destination.droppableId as StoryStatus,
+            newIndex: destination.index,
+          },
         });
       } else {
         const columnStories = [...storiesByStatus[source.droppableId as StoryStatus]];

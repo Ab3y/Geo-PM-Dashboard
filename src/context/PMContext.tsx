@@ -175,15 +175,27 @@ function pmReducer(state: PMState, action: PMAction): PMState {
       };
     case 'DELETE_STORY':
       return { ...state, stories: state.stories.filter(s => s.id !== action.payload) };
-    case 'MOVE_STORY':
-      return {
-        ...state,
-        stories: state.stories.map(s =>
-          s.id === action.payload.storyId
-            ? { ...s, status: action.payload.newStatus, updatedAt: new Date().toISOString() }
-            : s
-        ),
+    case 'MOVE_STORY': {
+      const story = state.stories.find(s => s.id === action.payload.storyId);
+      if (!story) return state;
+
+      const movedStory = {
+        ...story,
+        status: action.payload.newStatus,
+        updatedAt: new Date().toISOString(),
       };
+      const remaining = state.stories.filter(s => s.id !== story.id);
+      const destinationStories = remaining.filter(s => s.status === action.payload.newStatus);
+      const targetStory = destinationStories[action.payload.newIndex ?? destinationStories.length];
+      const insertAt = targetStory
+        ? remaining.indexOf(targetStory)
+        : destinationStories.length
+          ? remaining.indexOf(destinationStories[destinationStories.length - 1]) + 1
+          : remaining.length;
+
+      remaining.splice(insertAt, 0, movedStory);
+      return { ...state, stories: remaining };
+    }
     case 'REORDER_STORIES': {
       const orderedIds = action.payload.storyIds;
       const otherStories = state.stories.filter(s => s.status !== action.payload.status);

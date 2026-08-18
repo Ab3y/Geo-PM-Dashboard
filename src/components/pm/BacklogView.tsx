@@ -29,9 +29,21 @@ const TYPE_ICONS: Record<string, React.ComponentType<{ size?: number; className?
 
 type SortField = 'title' | 'type' | 'priority' | 'storyPoints' | 'status' | 'assignee';
 type SortDir = 'asc' | 'desc';
+type Density = 'default' | 'comfortable' | 'compact';
 
 const PRIORITY_ORDER: Record<Priority, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 const STATUS_ORDER: Record<StoryStatus, number> = { backlog: 0, todo: 1, 'in-progress': 2, review: 3, testing: 4, done: 5 };
+const DENSITY_STORAGE_KEY = 'abeops-backlog-density';
+const ROW_PADDING: Record<Density, string> = {
+  default: '20px',
+  comfortable: '14px',
+  compact: '8px',
+};
+const EXPANDED_PADDING: Record<Density, string> = {
+  default: '24px 32px',
+  comfortable: '16px 24px',
+  compact: '12px 16px',
+};
 
 export default function BacklogView() {
   const { stories, sprints } = usePMState();
@@ -44,6 +56,15 @@ export default function BacklogView() {
   const [sortField, setSortField] = useState<SortField>('priority');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [density, setDensity] = useState<Density>(() => {
+    const saved = localStorage.getItem(DENSITY_STORAGE_KEY);
+    return saved === 'comfortable' || saved === 'compact' ? saved : 'default';
+  });
+
+  function updateDensity(next: Density) {
+    setDensity(next);
+    localStorage.setItem(DENSITY_STORAGE_KEY, next);
+  }
 
   // Unique assignees for filter
   const assignees = useMemo(
@@ -229,6 +250,20 @@ export default function BacklogView() {
           </button>
         )}
 
+        <label className="flex items-center gap-2 text-xs text-gray-500">
+          Density
+          <select
+            value={density}
+            onChange={e => updateDensity(e.target.value as Density)}
+            aria-label="Backlog density"
+            className="cursor-pointer rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300 focus:border-[#00d4ff]/50 focus:outline-none"
+          >
+            <option value="default">Default</option>
+            <option value="comfortable">Comfortable</option>
+            <option value="compact">Compact</option>
+          </select>
+        </label>
+
         <button
           onClick={() =>
             dispatch({
@@ -293,20 +328,21 @@ export default function BacklogView() {
                         idx % 2 === 0 ? 'bg-[#0f1525]' : 'bg-[#151d30]'
                       } hover:bg-white/5 ${isExpanded ? 'bg-white/5' : ''}`}
                       onClick={() => setExpandedId(isExpanded ? null : story.id)}
+                      style={{ paddingBlock: ROW_PADDING[density] }}
                     >
                       {/* Expand indicator */}
-                      <div className="w-10 flex items-center justify-center px-2 py-3">
+                      <div className="w-10 flex items-center justify-center px-2">
                         <ChevronDown
                           size={14}
                           className={`text-gray-600 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                         />
                       </div>
                       {/* Title */}
-                      <div className="flex-1 px-4 py-3 min-w-0">
+                      <div className="flex-1 px-4 min-w-0">
                         <span className="text-white truncate block">{story.title}</span>
                       </div>
                       {/* Type */}
-                      <div className="px-3 py-3 hidden md:block">
+                      <div className="px-3 hidden md:block">
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
                           style={{ backgroundColor: `${typeConfig.color}20`, color: typeConfig.color }}
@@ -316,7 +352,7 @@ export default function BacklogView() {
                         </span>
                       </div>
                       {/* Priority */}
-                      <div className="px-3 py-3">
+                      <div className="px-3">
                         <span
                           className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium"
                           style={{ backgroundColor: `${priConfig.color}20`, color: priConfig.color }}
@@ -326,13 +362,13 @@ export default function BacklogView() {
                         </span>
                       </div>
                       {/* Points */}
-                      <div className="px-3 py-3 text-center hidden sm:block">
+                      <div className="px-3 text-center hidden sm:block">
                         <span className="text-gray-300 font-mono">
                           {story.storyPoints ?? '—'}
                         </span>
                       </div>
                       {/* Status */}
-                      <div className="px-3 py-3 hidden lg:block">
+                      <div className="px-3 hidden lg:block">
                         <span
                           className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-xs font-medium"
                           style={{ backgroundColor: `${statusCol?.color ?? '#6b7280'}20`, color: statusCol?.color ?? '#6b7280' }}
@@ -342,17 +378,17 @@ export default function BacklogView() {
                         </span>
                       </div>
                       {/* Assignee */}
-                      <div className="px-3 py-3 hidden xl:block">
+                      <div className="px-3 hidden xl:block">
                         <span className="text-gray-400 text-xs">{story.assignee ?? '—'}</span>
                       </div>
                       {/* Sprint */}
-                      <div className="px-3 py-3 hidden xl:block">
+                      <div className="px-3 hidden xl:block">
                         <span className="text-gray-500 text-xs truncate block max-w-[120px]">
                           {getSprintName(story.sprintId)}
                         </span>
                       </div>
                       {/* Reorder buttons */}
-                      <div className="w-20 px-2 py-3 flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                      <div className="w-20 px-2 flex items-center gap-1" onClick={e => e.stopPropagation()}>
                         <button
                           onClick={() => moveStory(story, 'up')}
                           disabled={idx === 0}
@@ -372,7 +408,7 @@ export default function BacklogView() {
 
                     {/* Expanded details */}
                     {isExpanded && (
-                      <ExpandedRow story={story} sprintName={getSprintName(story.sprintId)} />
+                      <ExpandedRow story={story} sprintName={getSprintName(story.sprintId)} density={density} />
                     )}
                   </td>
                 </tr>
@@ -392,7 +428,7 @@ export default function BacklogView() {
   );
 }
 
-function ExpandedRow({ story, sprintName }: { story: Story; sprintName: string }) {
+function ExpandedRow({ story, sprintName, density }: { story: Story; sprintName: string; density: Density }) {
   const dispatch = usePMDispatch();
   const [title, setTitle] = useState(story.title);
   const [description, setDescription] = useState(story.description);
@@ -402,7 +438,10 @@ function ExpandedRow({ story, sprintName }: { story: Story; sprintName: string }
   }
 
   return (
-    <div className="bg-[#0b1020] border-t border-white/5 px-6 py-4 space-y-3">
+    <div
+      className="bg-[#0b1020] border-t border-white/5 space-y-3"
+      style={{ padding: EXPANDED_PADDING[density] }}
+    >
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
           <label className="text-xs text-gray-500 uppercase tracking-wider block mb-1">Title</label>
