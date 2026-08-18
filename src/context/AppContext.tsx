@@ -6,7 +6,7 @@ import { SAMPLE_ELECTION_DATASETS } from '../data/sampleElection';
 
 const initialState: AppState = {
   viewLevel: 'world',
-  viewMode: '2d',
+  viewMode: '3d',
   selectedState: null,
   selectedStateName: null,
   activeDataset: null,
